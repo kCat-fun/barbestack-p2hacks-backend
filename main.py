@@ -2,6 +2,7 @@ import random
 from flask import Flask, jsonify, request
 from firebase_admin import credentials, firestore, initialize_app
 
+# バーベスタックのバックエンド
 # Firebaseの初期化
 cred = credentials.Certificate("./key.json")  # サービスアカウントキーへのパスを指定
 initialize_app(cred)
