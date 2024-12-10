@@ -28,10 +28,11 @@ def validate_id(id_value):
 def get_rooms():
     try:
         rooms = [doc.id for doc in rooms_ref.stream()]
-        return jsonify({"message": "OK", "rooms": rooms}), 200
+        print("GET: rooms")
+        return jsonify({"rooms": rooms}), 200
     except Exception as e:
-        print(e)
-        return jsonify({"message": "Internal Server Error"}), 500
+        print(f"エラー: {e}")
+        return jsonify({"message": "500-Internal Server Error"}), 500
 
 
 @app.route('/rooms', methods=['POST'])
@@ -40,10 +41,11 @@ def create_room():
         room_id = generate_id()
         new_room = rooms_ref.document(str(room_id))
         new_room.set({"players": []})
-        return jsonify({"room_id": room_id}), 200
+        print(f"部屋生成成功, ID={room_id}")
+        return jsonify({"message": "OK", "room_id": room_id}), 200
     except Exception as e:
-        print(e)
-        return jsonify({"message": "Internal Server Error"}), 500
+        print(f"エラー: {e}")
+        return jsonify({"message": "500-Internal Server Error"}), 500
 
 
 @app.route('/rooms/<int:room_id>', methods=['DELETE'])
@@ -51,11 +53,12 @@ def delete_room(room_id):
     validate_id(room_id)
     try:
         rooms_ref.document(str(room_id)).delete()
+        print(f"部屋削除成功, ID={room_id}")
         return jsonify({"message": "OK"}), 200
     except Exception as e:
-        print(e)
+        print(f"エラー: {e}")
         return jsonify(
-            {"message": "Not Found" if "NOT_FOUND" in str(e) else "Internal Server Error"}), 404 if "NOT_FOUND" in str(
+            {"message": "404-Not Found" if "NOT_FOUND" in str(e) else "500-Internal Server Error"}), 404 if "NOT_FOUND" in str(
             e) else 500
 
 
@@ -66,12 +69,13 @@ def get_players(room_id):
         room = rooms_ref.document(str(room_id)).get()
         if room.exists:
             players = room.to_dict().get('players', [])
+            print(f"GET: プレイヤー一覧")
             return jsonify({"players": players}), 200
         else:
-            return jsonify({"message": "Not Found"}), 404
+            return jsonify({"message": "404-Not Found"}), 404
     except Exception as e:
         print(e)
-        return jsonify({"message": "Internal Server Error"}), 500
+        return jsonify({"message": "500-Internal Server Error"}), 500
 
 
 @app.route('/rooms/<int:room_id>/players', methods=['POST'])
@@ -96,12 +100,13 @@ def add_player(room_id):
             }
             players.append(new_player)
             rooms_ref.document(str(room_id)).update({"players": players})
+            print(f"プレイヤー生成成功, ID={player_id}")
             return jsonify({"message": "OK", "player_id": player_id}), 200  # 生成された player_id を返す
         else:
-            return jsonify({"message": "Not Found"}), 404
+            return jsonify({"message": "404-Not Found"}), 404
     except Exception as e:
-        print(e)
-        return jsonify({"message": "Internal Server Error"}), 500
+        print(f"エラー: {e}")
+        return jsonify({"message": "500-Internal Server Error"}), 500
 
 
 @app.route('/rooms/<int:room_id>/players/<int:player_id>', methods=['GET'])
@@ -115,9 +120,9 @@ def get_player(room_id, player_id):
             for player in players:
                 if player.get("player_id") == player_id:
                     return jsonify(player), 200
-            return jsonify({"message": "Player Not Found"}), 404  # プレイヤーが見つからない場合の処理を追加
+            return jsonify({"message": "404-Player Not Found"}), 404  # プレイヤーが見つからない場合の処理を追加
         else:
-            return jsonify({"message": "Room Not Found"}), 404
+            return jsonify({"message": "404-Room Not Found"}), 404
     except Exception as e:
         print(e)
         return jsonify({"message": "Internal Server Error"}), 500
@@ -145,6 +150,7 @@ def update_player(room_id, player_id):
                         "spec": spec
                     })
                     rooms_ref.document(str(room_id)).update({"players": players})
+                    print(f"プレイヤー情報更新成功, ID={player_id}")
                     return jsonify({"message": "OK"}), 200
             return jsonify({"message": "Player Not Found"}), 404  # プレイヤーが見つからない場合の処理を追加
 
@@ -152,10 +158,10 @@ def update_player(room_id, player_id):
             return jsonify({"message": "Room Not Found"}), 404
 
     except (ValueError, TypeError) as e:  # lat, lng の型エラー処理
-        print(e)
+        print(f"エラー: {e}")
         return jsonify({"message": "Bad Request: Invalid lat or lng value"}), 400
     except Exception as e:
-        print(e)
+        print(f"エラー: {e}")
         return jsonify({"message": "Internal Server Error"}), 500
 
 
@@ -171,13 +177,14 @@ def delete_player(room_id, player_id):
             if len(updated_players) < len(
                     players):  # 削除されたプレイヤーがいる場合のみ更新
                 rooms_ref.document(str(room_id)).update({"players": updated_players})
+                print(f"プレイヤー削除成功, ID={player_id}")
                 return jsonify({"message": "OK"}), 200
             else:
                 return jsonify({"message": "Player Not Found"}), 404  # プレイヤーが見つからない場合の処理を追加
         else:
             return jsonify({"message": "Room Not Found"}), 404
     except Exception as e:
-        print(e)
+        print(f"エラー: {e}")
         return jsonify({"message": "Internal Server Error"}), 500
 
 
@@ -210,7 +217,8 @@ def kill_player(room_id, player_id):
                     if len(alive_players) <= 1:
                         # ゲーム終了処理
                         # ... (ゲーム終了処理のロジック) ...
-                        return jsonify({"message": "Game Over"}), 200  # ゲーム終了のレスポンス
+                        print(f"キル, 倒されたプレイヤーID={player_id}, 倒したプレイヤーID={killed_id}")
+                        return jsonify({"message": "KILLED"}), 200  # ゲーム終了のレスポンス
 
                     return jsonify({"message": "OK"}), 200
 
@@ -219,7 +227,7 @@ def kill_player(room_id, player_id):
             return jsonify({"message": "Room Not Found"}), 404
 
     except Exception as e:
-        print(e)
+        print(f"エラー: {e}")
         return jsonify({"message": "Internal Server Error" if "invalid literal for int()" not in str(
             e) else "Bad Request: killed_id must be integer and between 1 and 999999"}), 500 if "invalid literal for int()" not in str(
             e) else 400
